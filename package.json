@@ -1,1 +1,13 @@
-{"name":"poppy-cinema","version":"1.0.0","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js","start":"node dev-server.js"},"engines":{"node":">=20"}}
+{
+  "name": "poppy",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "start": "node dev-server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

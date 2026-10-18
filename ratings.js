@@ -1,0 +1,2 @@
+const specs=[['imdb','IMDb',10],['letterboxd','Letterboxd',5],['tomatoes','Rotten Tomatoes · crítica',100],['audience','Rotten Tomatoes · público',100]];
+export function normalizeRatings(data){return specs.map(([key,name,max])=>{const r=(Array.isArray(data?.ratings)?data.ratings:[]).find(r=>r.source===key||(key==='audience'&&r.source==='popcorn'));const n=r?.value==null||r.value===''?null:Number(r.value);return {key,Source:name,Value:Number.isFinite(n)&&n>=0&&n<=max?`${n}${max===100?'%':'/'+max}`:'',votes:Number.isFinite(r?.votes)?r.votes:null};});}
