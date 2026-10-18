@@ -131,3 +131,14 @@ Antes de difundir públicamente, añade a Créditos un logo oficial aprobado de 
 - **Duplicados:** se mantiene el identificador estable TMDB para guardado, y el bloqueo de títulos homónimos de v5 para recomendaciones.
 
 Antes de actualizar, descarga una copia de tus listas desde Ajustes. Las carpetas tienen su propio almacenamiento local y tabla opcional; no afectan al formato del backup de películas.
+
+
+## Novedades v7 — sincronización automática
+
+- Las películas, notas, estados y colecciones se sincronizan automáticamente en la misma cuenta de Supabase.
+- Al abrir de nuevo la app, recuperar conexión o volver a la pestaña, se revisan los cambios de ambos dispositivos. Con la app abierta, se comprueban los datos aproximadamente cada 15 segundos. **No es tiempo real instantáneo por WebSocket**.
+- Las ediciones de carpetas hechas durante una sincronización se conservan y se envían en otra ronda. No se sobreescriben silenciosamente por una respuesta tardía.
+- No requiere sincronizar manualmente en Ajustes. Se mantiene el botón como alternativa de comprobación.
+- **Configuración una sola vez:** si aún no ejecutaste `poppy-folders.sql` en Supabase, debes hacerlo para sincronizar colecciones. Si ya lo hiciste, no hace falta repetirlo ni cambiar claves.
+- Abre ambos dispositivos con la misma cuenta. Cuando la conexión falla, los cambios locales se conservan y se reintentan.
+- Precaución: no borres datos de navegador mientras haya cambios sin sincronizar.
