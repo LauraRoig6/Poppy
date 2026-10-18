@@ -35,6 +35,7 @@ export default async function handler(req,res){
  for(const rating of o.Ratings||[]){const key=rating.Source==='Internet Movie Database'?'imdb':rating.Source==='Rotten Tomatoes'?'tomatoes':null;const slot=result.ratings.find(x=>x.key===key);if(slot&&!slot.Value)slot.Value=String(rating.Value);}
  if(result.ratingsState==='unconfigured')result.ratingsState='partial';result.ratingsFetchedAt=new Date().toISOString();
  }catch{if(result.ratingsState==='unconfigured')result.ratingsState='error';}}
+ 
  result.ratings.push({key:'filmaffinity',Source:'FilmAffinity',Value:'',unavailable:true});
  if(result.ratingsState!=='error'){if(detailCache.size>200)detailCache.delete(detailCache.keys().next().value);detailCache.set(cacheKey,{time:Date.now(),data:result});}
  }
