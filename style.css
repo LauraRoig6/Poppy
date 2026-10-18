@@ -55,3 +55,8 @@ html,body{touch-action:manipulation}
 
 /* Poppy v10 */
 .folder-customize{max-width:none}.folder-customize>summary{font-weight:700;font-size:16px}.folder-customize[open]>summary{margin-bottom:15px}.detail-collection{margin:20px 0}.folder-choice{margin:5px;max-width:100%;white-space:normal;text-align:left}#movieFolders{border:1px solid var(--line);padding:12px;margin-top:10px;border-radius:12px}.duel-actions{margin-top:14px}
+
+/* v11 */
+.discovery-feeds{display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin;padding:4px 0 10px;white-space:nowrap}.discovery-feeds button{flex:none;background:#f6e9e4;color:#7a373e;border-radius:18px;padding:10px 13px;font-size:13px}.discovery-feeds button.active{background:var(--red);color:white}
+#detail{position:fixed}#detail .close{position:sticky!important;top:0!important;right:0!important;float:right!important;margin:0 0 8px 10px!important;z-index:100!important;background:var(--cream)!important;box-shadow:0 3px 12px #36262526}#detail .status-toolbar{clear:both}
+@media(max-width:760px){.discovery-feeds button{font-size:11px;padding:9px 12px}#detail .close{top:0!important}}
