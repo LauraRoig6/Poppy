@@ -120,3 +120,14 @@ TMDB: https://developer.themoviedb.org/ — MDBList: https://docs.mdblist.com/do
 This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 Antes de difundir públicamente, añade a Créditos un logo oficial aprobado de TMDB obtenido en https://www.themoviedb.org/about/logos-attribution y revisa las condiciones de uso de los proveedores. El aviso y enlace de atribución ya están incluidos.
+
+## Novedades v6
+
+- **Colecciones:** apartado independiente con carpetas de nombre personalizado, búsqueda de títulos de TMDB dentro de cada carpeta y botón para añadir o quitar películas sin cambiar si están vistas/pendientes.
+- **Sincronización de carpetas:** después de actualizar la web, ejecuta **`poppy-folders.sql` una vez** en el editor SQL de Supabase (el mismo proyecto que ya utilizas). No vuelvas a ejecutar ni cambies la tabla anterior. Sin ese paso las carpetas creadas se guardan localmente, pero no podrán sincronizarse entre iPhone y PC.
+- **Sorpréndeme:** sorteo ponderado entre recomendaciones por afinidad de géneros con tus valoraciones, evitando vistas, pendientes y nombres repetidos conforme al comportamiento de v5. No se trata de IA semántica de argumento.
+- **Deshacer:** disponible justo después de guardar Pendiente, No me interesa o quitar una película; repone el registro anterior.
+- **iPhone:** barra de navegación de una sola línea con desplazamiento horizontal y botones compactos, con la X de la ficha separada de los estados.
+- **Duplicados:** se mantiene el identificador estable TMDB para guardado, y el bloqueo de títulos homónimos de v5 para recomendaciones.
+
+Antes de actualizar, descarga una copia de tus listas desde Ajustes. Las carpetas tienen su propio almacenamiento local y tabla opcional; no afectan al formato del backup de películas.
