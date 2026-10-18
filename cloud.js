@@ -18,25 +18,20 @@ export async function syncFolders(localFolders){
  const t=await token();
  const headers={apikey:config.key,Authorization:'Bearer '+t,'Content-Type':'application/json'};
  const base=config.url+'/rest/v1/poppy_folders';
- let richSchema=true;
- let response=await fetch(base+'?select=id,name,movies,updated_at,deleted,icon,banner',{headers,signal:AbortSignal.timeout(15000)});
+ const response=await fetch(base+'?select=id,name,movies,updated_at,deleted,icon,banner',{headers,signal:AbortSignal.timeout(15000)});
  if(!response.ok){
-  richSchema=false;
-  response=await fetch(base+'?select=id,name,movies,updated_at,deleted',{headers,signal:AbortSignal.timeout(15000)});
+  const err=await response.text().catch(()=>"");
+  if(response.status===400||err.includes('column'))throw Error('Faltan las columnas de icono y banner. Ejecuta poppy-folders.sql de la v10 en Supabase → SQL Editor para sincronizar los diseños.');
+  throw Error('No se pudieron leer las carpetas de Supabase.');
  }
- if(!response.ok)throw Error('Activa las colecciones sincronizadas ejecutando poppy-folders.sql en Supabase.');
  const remote=await response.json();
  const merged=new Map(remote.map(r=>[r.id,{id:r.id,name:r.name,movies:r.movies,updatedAt:Number(r.updated_at),deleted:r.deleted,icon:r.icon||'🎬',banner:r.banner||''}]));
  const modified=[];
- for(const f of localFolders){const other=merged.get(f.id);if(!other||f.updatedAt>other.updatedAt){merged.set(f.id,f);modified.push(f);}}
+ for(const f of localFolders){const other=merged.get(f.id);if(!other||Number(f.updatedAt)>Number(other.updatedAt)){merged.set(f.id,f);modified.push(f);}}
  if(modified.length){
   const payload=modified.map(f=>({user_id:session.user.id,id:f.id,name:f.name,movies:f.movies,updated_at:f.updatedAt,deleted:!!f.deleted,icon:f.icon||'🎬',banner:f.banner||''}));
-  let r=await fetch(base+'?on_conflict=user_id,id',{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(richSchema?payload:payload.map(({icon,banner,...rest})=>rest)),signal:AbortSignal.timeout(15000)});
-  if(!r.ok&&richSchema){
-   richSchema=false;
-   r=await fetch(base+'?on_conflict=user_id,id',{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(payload.map(({icon,banner,...rest})=>rest)),signal:AbortSignal.timeout(15000)});
-  }
-  if(!r.ok)throw Error('No se han podido sincronizar las carpetas.');
+  const r=await fetch(base+'?on_conflict=user_id,id',{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(payload),signal:AbortSignal.timeout(20000)});
+  if(!r.ok)throw Error('No se han podido guardar los diseños de carpetas en Supabase. Comprueba las columnas icon y banner.');
  }
  return [...merged.values()];
 }
