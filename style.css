@@ -14,3 +14,16 @@
  dialog{padding:14px;width:calc(100% - 16px);max-height:94dvh;border-radius:14px}.close{margin-right:0}.status-toolbar{top:-14px;margin:0 0 14px;padding:9px 32px 9px 0}.status-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.status-buttons button{justify-content:center;padding:8px 4px;font-size:clamp(9px,2.6vw,12px);gap:3px;white-space:nowrap;border-radius:10px}.status-buttons button span{font-size:14px}.status-toolbar small{margin-top:4px}.details{gap:12px}.details>.poster{max-width:112px}.details h2{font-size:26px;margin:6px 0}.personal-panel{margin-top:14px}.sectionhead{gap:8px}.sectionhead h2{font-size:22px}
 }
 @media(max-width:390px){.hero{grid-template-columns:minmax(0,1fr) 76px}.hero h2{font-size:23px}.status-buttons button{font-size:9px}.status-buttons button span{font-size:12px}}
+
+/* Poppy v5: checkbox pegado a su texto, cierre de ficha sin solapar acciones */
+.home-filters .inline-check{display:inline-flex;align-items:center;justify-content:flex-start;gap:5px;white-space:nowrap;flex:0 0 auto;margin:0;padding:0 2px}
+.home-filters .inline-check input,.filters.home-filters .inline-check input{flex:0 0 15px;min-width:15px;width:15px;height:15px;margin:0;padding:0;accent-color:var(--red)}
+#detail .close{position:sticky;display:flex;align-items:center;justify-content:center;float:right;top:0;right:auto;margin:0 0 0 8px;width:36px;height:36px;flex:0 0 36px;z-index:9;background:var(--cream);border:1px solid var(--line);border-radius:50%;font-size:25px;line-height:1}
+#detail .status-toolbar{clear:both;padding-right:0;top:0}
+@media(max-width:760px){
+ #main>.home-filters .inline-check{gap:5px;padding:0 3px;margin:0;flex:0 0 auto}
+ #main>.home-filters .inline-check input{flex:0 0 14px;min-width:14px;width:14px;margin:0}
+ #detail .close{position:sticky;top:0;margin:0 0 5px 8px;width:34px;height:34px}
+ #detail .status-toolbar{clear:both;top:0;margin:0 0 14px;padding:8px 0}
+ #detail .status-buttons button{white-space:normal;min-height:40px}
+}

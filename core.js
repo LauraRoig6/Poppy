@@ -2,6 +2,17 @@ export const DAY=86400000;
 export function candidates(movies,records,genre='',max=999,pending=false,now=Date.now()){
  return movies.filter(m=>{const r=records[m.id]?.deleted?null:records[m.id];return r?.status!=='seen'&&r?.status!=='dismissed'&&!(r?.skipUntil>now)&&(!genre||m.genres.includes(genre))&&(!pending||r?.status==='pending')&&(max===999||(m.runtime&&m.runtime<=max));});
 }
+export function titleKey(title){return String(title||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es').replace(/[^a-z0-9]+/g,' ').trim();}
+export function discoveryCandidates(movies,records,genre='',max=999,now=Date.now()){
+ const blocked=new Set(Object.values(records).filter(r=>!r.deleted&&['pending','seen','dismissed'].includes(r.status)).map(r=>titleKey(r.movie?.title)).filter(Boolean));
+ const used=new Set();
+ return candidates(movies,records,genre,max,false,now).filter(m=>{
+  if(['pending','seen','dismissed'].includes(records[m.id]?.status))return false;
+  const key=titleKey(m.title);
+  if(!key||blocked.has(key)||used.has(key))return false;
+  used.add(key);return true;
+ });
+}
 export function taste(records){const weights={};for(const r of Object.values(records)){if(r.deleted||r.status!=='seen'||r.score==null)continue;for(const g of r.movie.genres)weights[g]=(weights[g]||0)+(r.score-5.5)/Math.sqrt(r.movie.genres.length||1);}return weights;}
 export function rankMovies(movies,records){const weights=taste(records);return [...movies].sort((a,b)=>affinity(b,weights)-affinity(a,weights));}
 export function affinity(movie,weights){return movie.genres.reduce((s,g)=>s+(weights[g]||0),0)/Math.sqrt(movie.genres.length||1);}
