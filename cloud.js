@@ -12,18 +12,31 @@ export async function logout(){if(session&&config){try{await fetch(config.url+'/
 async function token(){if(!session)throw Error('Inicia sesión para sincronizar.');if(session.expires_at*1000<Date.now()+60000){if(!refreshing)refreshing=auth('token?grant_type=refresh_token',{refresh_token:session.refresh_token}).then(setSession).finally(()=>refreshing=null);await refreshing;}return session.access_token;}
 export async function syncRecords(changes){if(!config)throw Error('Configura Supabase para sincronizar.');const t=await token();const r=await fetch(config.url+'/rest/v1/rpc/poppy_sync',{method:'POST',headers:{apikey:config.key,Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({changes}),signal:AbortSignal.timeout(15000)});const d=await r.json();if(!r.ok)throw Error(r.status===401?'Tu sesión ha caducado. Vuelve a entrar.':'No se pudo sincronizar. Revisa Supabase y que hayas ejecutado supabase.sql. Tus cambios siguen guardados aquí.');return validateBackup({version:2,records:d});}
 
-// Poppy v6: las carpetas se sincronizan en una tabla adicional sin tocar poppy_records.
+// Poppy v9: las carpetas pueden guardar también un icono y un banner.
 export async function syncFolders(localFolders){
  if(!config||!session)return localFolders;
  const t=await token();
  const headers={apikey:config.key,Authorization:'Bearer '+t,'Content-Type':'application/json'};
  const base=config.url+'/rest/v1/poppy_folders';
- const response=await fetch(base+'?select=id,name,movies,updated_at,deleted',{headers,signal:AbortSignal.timeout(15000)});
+ let richSchema=true;
+ let response=await fetch(base+'?select=id,name,movies,updated_at,deleted,icon,banner',{headers,signal:AbortSignal.timeout(15000)});
+ if(!response.ok){
+  richSchema=false;
+  response=await fetch(base+'?select=id,name,movies,updated_at,deleted',{headers,signal:AbortSignal.timeout(15000)});
+ }
  if(!response.ok)throw Error('Activa las colecciones sincronizadas ejecutando poppy-folders.sql en Supabase.');
  const remote=await response.json();
- const merged=new Map(remote.map(r=>[r.id,{id:r.id,name:r.name,movies:r.movies,updatedAt:Number(r.updated_at),deleted:r.deleted}]));
+ const merged=new Map(remote.map(r=>[r.id,{id:r.id,name:r.name,movies:r.movies,updatedAt:Number(r.updated_at),deleted:r.deleted,icon:r.icon||'🎬',banner:r.banner||''}]));
  const modified=[];
  for(const f of localFolders){const other=merged.get(f.id);if(!other||f.updatedAt>other.updatedAt){merged.set(f.id,f);modified.push(f);}}
- if(modified.length){const r=await fetch(base+'?on_conflict=user_id,id',{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(modified.map(f=>({user_id:session.user.id,id:f.id,name:f.name,movies:f.movies,updated_at:f.updatedAt,deleted:!!f.deleted}))),signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('No se han podido sincronizar las carpetas.');}
+ if(modified.length){
+  const payload=modified.map(f=>({user_id:session.user.id,id:f.id,name:f.name,movies:f.movies,updated_at:f.updatedAt,deleted:!!f.deleted,icon:f.icon||'🎬',banner:f.banner||''}));
+  let r=await fetch(base+'?on_conflict=user_id,id',{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(richSchema?payload:payload.map(({icon,banner,...rest})=>rest)),signal:AbortSignal.timeout(15000)});
+  if(!r.ok&&richSchema){
+   richSchema=false;
+   r=await fetch(base+'?on_conflict=user_id,id',{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(payload.map(({icon,banner,...rest})=>rest)),signal:AbortSignal.timeout(15000)});
+  }
+  if(!r.ok)throw Error('No se han podido sincronizar las carpetas.');
+ }
  return [...merged.values()];
 }
