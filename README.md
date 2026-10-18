@@ -142,3 +142,11 @@ Antes de actualizar, descarga una copia de tus listas desde Ajustes. Las carpeta
 - **Configuración una sola vez:** si aún no ejecutaste `poppy-folders.sql` en Supabase, debes hacerlo para sincronizar colecciones. Si ya lo hiciste, no hace falta repetirlo ni cambiar claves.
 - Abre ambos dispositivos con la misma cuenta. Cuando la conexión falla, los cambios locales se conservan y se reintentan.
 - Precaución: no borres datos de navegador mientras haya cambios sin sincronizar.
+
+
+## v8
+- Colecciones: quitar una película de la carpeta ya no borra el registro personal; botón Quitar debajo de cada cartel y acción contextual en la ficha, con Deshacer.
+- Formulario de añadir películas situado encima de los carteles de la colección.
+- Cuadrícula de 6 columnas en escritorio y 3 en móvil, títulos sin truncado.
+- Nueva pestaña Duelo de pelis: dos pendientes distintas, sorteo equitativo 50/50, acceso a la ganadora.
+- Supabase y tablas existentes sin modificaciones.
