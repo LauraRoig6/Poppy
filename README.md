@@ -1,4 +1,17 @@
-# Poppy — versión 2
+# Cambios de interfaz en v3
+
+- Estado visible al principio de la ficha: Pendiente, Vista y No me interesa, con guardado inmediato y selección visual.
+- La nota personal aparece al marcar Vista, antes de las puntuaciones y reparto. Fecha y comentario desplegables.
+- Sin número de pendientes en el menú. Contador en una palomita junto a «Para otro día», con el total de pendientes aunque filtres la lista.
+- Aviso de conexión de MDBList con botón que abre las instrucciones en Ajustes.
+
+**Actualización desde v2:** sustituye el contenido del repositorio por este paquete. Conserva las variables de Vercel. No vuelvas a ejecutar supabase.sql ni cambies las tablas del planner. No cambia el formato de datos.
+
+Las 15 pruebas de lógica siguen pasando. La sintaxis está comprobada; no hay verificación visual en navegador disponible en este entorno.
+
+---
+
+# Poppy — versión 3
 
 Cine personal en rojo cereza, mantequilla y blanco cálido. Esta carpeta es el proyecto completo para sustituir la versión anterior en GitHub/Vercel.
 
