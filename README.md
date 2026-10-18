@@ -11,3 +11,10 @@ Mejoras:
 Los banners se guardan comprimidos en la tabla `poppy_folders` (no necesitan bucket de Storage).
 
 Pruebas: `npm test`.
+
+
+## v10.1 — desplegable de carpetas
+- El panel «Personalizar carpeta» conserva su estado abierto hasta que lo cierres.
+- La sincronización automática no reconstruye el formulario mientras estás eligiendo un emoji o archivo.
+- Las imágenes se recortan en el navegador a proporción horizontal 3:1 y se comprimen antes de guardarse.
+- Al pulsar «Guardar estilo» se conserva abierto el desplegable.
