@@ -10,10 +10,12 @@ export default async function handler(req,res){
  try{
  const {q,id,page='1',similar,genre,max,feed,collection}=req.query||{};
  if((id&&!/^\d{1,10}$/.test(id))||(similar&&!/^\d{1,10}$/.test(similar))||(collection&&!/^\d{1,10}$/.test(collection)))return res.status(400).json({error:'Identificador inválido'});
+ if(req.query?.person&&!/^\d{1,10}$/.test(String(req.query.person)))return res.status(400).json({error:'Persona inválida'});
  if(q&&String(q).length>150)return res.status(400).json({error:'Búsqueda demasiado larga'});
  const cacheKey=`${id}:${!!process.env.MDBLIST_API_KEY}:${!!process.env.OMDB_API_KEY}`;
  const cached=id&&detailCache.get(cacheKey);
  if(cached&&Date.now()-cached.time<3600000){res.setHeader('Cache-Control','public, max-age=0, s-maxage=3600');return res.status(200).json(cached.data);}
+ if(req.query?.person){const person=String(req.query.person);const [pr,cr]=await Promise.all(['person/'+person,'person/'+person+'/movie_credits'].map(path=>fetch('https://api.themoviedb.org/3/'+path+'?language=es-ES',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(10000)})));if(!pr.ok||!cr.ok)throw Error('No se pudo cargar la filmografía');const info=await pr.json(),credits=await cr.json();const movies=[...(credits.cast||[]),...(credits.crew||[]).filter(x=>x.job==='Director')].filter(x=>!x.adult&&x.id).map(x=>({id:x.id,title:x.title||x.original_title||'',year:(x.release_date||'').slice(0,4),poster:photo(x.poster_path),overview:x.overview||'',genres:(x.genre_ids||[]).map(g=>genres[g]).filter(Boolean),cast:[],ratings:[],people:[],runtime:null}));return res.status(200).json({person:{id:info.id,name:info.name,biography:info.biography||''},movies:[...new Map(movies.map(x=>[x.id,x])).values()].sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0))});}
  const feedType=['popular','now','upcoming','top'].includes(feed)?feed:'popular';
  const path=collection?`collection/${collection}`:id?`movie/${id}`:similar?`movie/${similar}/recommendations`:q?'search/movie':feedType==='now'?'movie/now_playing':feedType==='upcoming'?'movie/upcoming':feedType==='top'?'movie/top_rated':'discover/movie';
  const url=new URL('https://api.themoviedb.org/3/'+path);url.searchParams.set('language','es-ES');url.searchParams.set('include_adult','false');

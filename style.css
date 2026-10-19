@@ -98,3 +98,10 @@ header{position:relative}header .settings-gear{background:#f8e9e6;color:var(--re
  #detail .detail-visual.has-backdrop{margin-bottom:103px}
  #detail .detail-visual.no-backdrop .detail-cover{margin:auto}
 }
+
+/* v13 */
+#main{animation:poppyEnter .18s ease-out}@keyframes poppyEnter{from{opacity:.7;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@media(prefers-reduced-motion:reduce){#main{animation:none}*{scroll-behavior:auto!important}}
+.blind-card{background:#f8edde;border-radius:20px;padding:24px;max-width:610px;margin:20px auto}.blind-card>.poster{max-width:180px;margin:0 auto}.blind-mystery{margin:auto;background:#af2639;color:white;border-radius:18px;font:90px Georgia;text-align:center;display:grid;place-items:center;width:180px;height:240px}.blind-hints{margin:20px 0}.priority-toggle{background:transparent;color:#9c3848;padding:8px 0;font-size:12px}.priority-toggle.is-priority{font-weight:700}.couple-pickers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.couple-options{max-height:300px;overflow-y:auto}.couple-options label{display:flex;gap:8px;align-items:center;line-height:1.4;padding:4px 0}.person-link{border:0;background:none;padding:0;text-align:left;cursor:pointer}.person-link:hover{text-decoration:underline}@media(max-width:760px){.couple-pickers{grid-template-columns:1fr}.blind-card{padding:16px}header nav button{font-size:9px;padding:7px 5px}}
+
+/* Navegación v13: todas las pestañas visibles, sin carrusel */
+@media(max-width:760px){header nav{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;overflow:visible!important;gap:3px!important;width:100%!important;padding:0 0 8px!important}header nav button{min-width:0!important;white-space:normal!important;line-height:1.2;min-height:35px;overflow-wrap:break-word}header .settings-gear{align-self:flex-end}}
