@@ -13,19 +13,18 @@ export default async function handler(req,res){
  if((id&&!/^\d{1,10}$/.test(id))||(similar&&!/^\d{1,10}$/.test(similar))||(collection&&!/^\d{1,10}$/.test(collection)))return res.status(400).json({error:'Identificador inválido'});
  if(req.query?.person&&!/^\d{1,10}$/.test(String(req.query.person)))return res.status(400).json({error:'Persona inválida'});
  if(q&&String(q).length>150)return res.status(400).json({error:'Búsqueda demasiado larga'});
- const cacheKey=`${id}:${!!process.env.MDBLIST_API_KEY}:${!!process.env.OMDB_API_KEY}`;
+ const cacheKey=`${id}:${req.query?.fast?'fast':'full'}:${!!process.env.MDBLIST_API_KEY}:${!!process.env.OMDB_API_KEY}`;
  const cached=id&&detailCache.get(cacheKey);
  if(cached&&Date.now()-cached.time<3600000){res.setHeader('Cache-Control','public, max-age=0, s-maxage=3600');return res.status(200).json(cached.data);}
  if(req.query?.person){
  const person=String(req.query.person),hit=personCache.get(person);
  if(hit&&Date.now()-hit.time<3600000)return res.status(200).json(hit.data);
- const u=new URL('https://api.themoviedb.org/3/person/'+person+'/combined_credits');u.searchParams.set('language','es-ES');
- const v=new URL('https://api.themoviedb.org/3/person/'+person);v.searchParams.set('language','es-ES');
- const [cr,pr]=await Promise.all([fetch(u,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(12000)}),fetch(v,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(12000)})]);
- if(!cr.ok||!pr.ok)throw Error('TMDB no ha devuelto la filmografía. Prueba otra vez.');
- const credits=await cr.json(),info=await pr.json();
- const movies=[...(credits.cast||[]),...(credits.crew||[]).filter(x=>x.job==='Director')].filter(x=>x.media_type==='movie'&&!x.adult&&x.id).map(x=>({id:x.id,title:x.title||x.original_title||'',year:(x.release_date||'').slice(0,4),poster:photo(x.poster_path),overview:x.overview||'',genres:(x.genre_ids||[]).map(g=>genres[g]).filter(Boolean),cast:[],ratings:[],people:[],runtime:null}));
- const data={person:{id:info.id,name:info.name,biography:info.biography||''},movies:[...new Map(movies.map(x=>[x.id,x])).values()].sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0))};
+ const u=new URL('https://api.themoviedb.org/3/person/'+person+'/movie_credits');u.searchParams.set('language','es-ES');
+ const cr=await fetch(u,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(14000)});
+ if(!cr.ok)return res.status(cr.status===404?404:502).json({error:cr.status===404?'Esta persona no aparece en TMDB.':'No se pudo consultar la filmografía (TMDB '+cr.status+').'});
+ const credits=await cr.json();
+ const movies=[...(credits.cast||[]),...(credits.crew||[]).filter(x=>x.job==='Director')].filter(x=>!x.adult&&x.id).map(x=>({id:x.id,title:x.title||x.original_title||'',year:(x.release_date||'').slice(0,4),poster:photo(x.poster_path),overview:x.overview||'',genres:(x.genre_ids||[]).map(g=>genres[g]).filter(Boolean),cast:[],ratings:[],people:[],runtime:null}));
+ const data={person:{id:Number(person),name:credits.cast?.[0]?.name||credits.crew?.[0]?.name||'Filmografía',biography:''},movies:[...new Map(movies.map(x=>[x.id,x])).values()].sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0))};
  personCache.set(person,{time:Date.now(),data});res.setHeader('Cache-Control','public, max-age=0, s-maxage=3600');return res.status(200).json(data);
  }
  const feedType=['popular','now','upcoming','top','streaming'].includes(feed)?feed:'popular';
@@ -39,7 +38,7 @@ export default async function handler(req,res){
  const normalize=m=>({id:m.id,title:m.title,year:m.release_date?.slice(0,4)||'',poster:photo(m.poster_path),backdrop:photo(m.backdrop_path,'w780'),posterAlternatives:(m.images?.posters||[]).filter(p=>p.file_path!==m.poster_path).slice(0,4).map(p=>photo(p.file_path)),overview:m.overview||'Sin sinopsis disponible.',genres:m.genres?.map(g=>g.name)||m.genre_ids?.map(g=>genres[g]).filter(Boolean)||[],runtime:m.runtime||null,director:m.credits?.crew?.filter(c=>c.job==='Director').map(c=>c.name).join(', ')||'',cast:m.credits?.cast?.slice(0,12).map(c=>c.name)||[],people:[...(m.credits?.crew||[]).filter(c=>c.job==='Director').map(c=>({id:c.id,name:c.name,photo:photo(c.profile_path,'w185'),role:'Dirección',character:''})),...(m.credits?.cast||[]).slice(0,12).map(c=>({id:c.id,name:c.name,photo:photo(c.profile_path,'w185'),role:'Reparto',character:c.character||''}))],tmdb:m.vote_count?m.vote_average:null,imdbId:m.imdb_id||'',collectionId:m.belongs_to_collection?.id||null,collectionName:m.belongs_to_collection?.name||'',ratings:[],full:!!id,fetchedAt:id?new Date().toISOString():null});
  const result=collection?{collectionId:Number(collection),name:data.name||'',movies:(data.parts||[]).filter(m=>!m.adult).map(normalize)}:id?normalize(data):{movies:(data.results||[]).filter(m=>!m.adult).map(normalize),page:data.page,totalPages:Math.min(50,data.total_pages||1),genres};
  if(id){
- result.ratings=normalizeRatings({});result.ratingsState='unconfigured';
+ result.ratings=normalizeRatings({});result.ratingsState=req.query?.fast?'loading':process.env.MDBLIST_API_KEY?'loading':'unconfigured';
  if(process.env.MDBLIST_API_KEY&&!req.query?.fast){try{
  const u=new URL(`https://api.mdblist.com/tmdb/movie/${id}`);u.searchParams.set('apikey',process.env.MDBLIST_API_KEY);
  const r=await fetch(u,{signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error('MDBList no disponible ('+r.status+')');

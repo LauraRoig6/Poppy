@@ -1,0 +1,1 @@
+Poppy v13.3: corrección filmografía TMDB (movie_credits), estado de puntuaciones y enlace directo OCINE Estepark Castellón. No requiere SQL. Comprueba MDBLIST_API_KEY en Vercel solo si Ajustes indica realmente que falta.
