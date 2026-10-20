@@ -105,3 +105,6 @@ header{position:relative}header .settings-gear{background:#f8e9e6;color:var(--re
 
 /* Navegación v13: todas las pestañas visibles, sin carrusel */
 @media(max-width:760px){header nav{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;overflow:visible!important;gap:3px!important;width:100%!important;padding:0 0 8px!important}header nav button{min-width:0!important;white-space:normal!important;line-height:1.2;min-height:35px;overflow-wrap:break-word}header .settings-gear{align-self:flex-end}}
+
+/* V13.1: prioridad con llama visible incluso sin estar activada */
+.priority-toggle{font-family:'DM Sans',system-ui,sans-serif;letter-spacing:0}.priority-toggle.is-priority{color:#bd452d}
