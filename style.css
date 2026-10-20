@@ -108,3 +108,29 @@ header{position:relative}header .settings-gear{background:#f8e9e6;color:var(--re
 
 /* V13.1: prioridad con llama visible incluso sin estar activada */
 .priority-toggle{font-family:'DM Sans',system-ui,sans-serif;letter-spacing:0}.priority-toggle.is-priority{color:#bd452d}
+
+/* Poppy v14 · funciones sin nuevos apartados ni deslizamientos de la navegación */
+.card-wrap{position:relative;isolation:isolate}
+.card-wrap:has(.quick-menu){z-index:12}
+.quick-trigger{position:absolute;right:5px;top:5px;z-index:3;width:30px;height:28px;border-radius:9px;background:rgba(255,250,242,.94);box-shadow:0 2px 8px #36262535;color:#78303a;font-size:20px;line-height:1;font-weight:700;padding:0 2px}
+.quick-trigger:hover,.quick-trigger:focus-visible{background:white}
+.quick-menu{position:absolute;right:2px;top:37px;z-index:8;min-width:184px;max-width:min(240px,90vw);background:#fffefa;box-shadow:0 12px 28px #36262540;border:1px solid var(--line);padding:6px;border-radius:13px;display:flex;flex-direction:column;text-align:left}
+.quick-menu button{display:block;width:100%;text-align:left;padding:10px 9px;font-size:12px;border-radius:8px;color:var(--ink);background:transparent;white-space:normal}
+.quick-menu button:hover,.quick-menu button:focus-visible{background:#f8e9e6}
+.quick-folder-list{border-top:1px solid var(--line);max-height:180px;overflow-y:auto;padding-top:5px}
+.home-additions{margin-top:38px;padding:22px 24px;border-radius:20px;background:#fffdf8;border:1px solid var(--line)}
+.home-additions .sectionhead{margin:0 0 4px}.home-additions .sectionhead h2{margin:0}
+.session-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:8px;align-items:center;margin:18px 0}
+.session-controls select{min-width:0;width:100%;font-size:13px}.session-controls button{white-space:nowrap}
+.session-pick{display:grid;grid-template-columns:110px 1fr;gap:20px;align-items:center;border-radius:14px;background:#f6e7ad;padding:16px}
+.session-pick .poster{width:110px}.session-pick h3{font-size:25px;margin:0}
+.smart-folders{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0 26px}
+.smart-card{display:flex;flex-direction:column;gap:7px;align-items:flex-start;padding:16px 14px;background:#f7eadd;border:1px solid var(--line);border-radius:16px;text-align:left;color:var(--ink)}
+.smart-card>span{font-size:28px}.smart-card strong{font-size:13px}.smart-card small{color:#75645d;font-size:11px}
+.saga-progress{border:1px solid var(--line);border-radius:12px;padding:13px;margin:12px 0;background:#fff9ee}
+.saga-progress>div{display:flex;align-items:center;justify-content:space-between;gap:10px}.saga-progress small{color:#75645d}
+.saga-progress progress{width:100%;height:10px;accent-color:var(--red);margin-top:8px}.saga-progress p{margin:5px 0 0}
+@media(max-width:760px){.quick-trigger{width:26px;height:25px;right:3px;top:3px;font-size:18px}.quick-menu{right:-1px;min-width:150px}.quick-menu button{font-size:11px;padding:9px 6px}.home-additions{padding:16px 13px;margin-top:23px}.session-controls{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.session-controls select{font-size:11px;padding:9px 7px}.session-controls button{grid-column:1/-1}.session-pick{grid-template-columns:82px 1fr;gap:12px;padding:10px}.session-pick .poster{width:82px}.session-pick h3{font-size:19px}.smart-folders{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.smart-card{padding:12px 10px}}
+
+/* v14: los filtros de Descubrir se ven completos, sin desplazamiento horizontal */
+@media(max-width:760px){.discovery-feeds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;overflow:visible;white-space:normal}.discovery-feeds button{min-width:0;padding:9px 5px;white-space:normal;line-height:1.2;font-size:10px}}
