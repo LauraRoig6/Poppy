@@ -17,15 +17,27 @@ export default async function handler(req,res){
  const cached=id&&detailCache.get(cacheKey);
  if(cached&&Date.now()-cached.time<3600000){res.setHeader('Cache-Control','public, max-age=0, s-maxage=3600');return res.status(200).json(cached.data);}
  if(req.query?.person){
- const person=String(req.query.person),hit=personCache.get(person);
+ const suppliedId=String(req.query.person),name=String(req.query.name||'').trim().slice(0,120),role=String(req.query.role||'');
+ const cacheId=suppliedId+':'+name,hit=personCache.get(cacheId);
  if(hit&&Date.now()-hit.time<3600000)return res.status(200).json(hit.data);
- const u=new URL('https://api.themoviedb.org/3/person/'+person+'/movie_credits');u.searchParams.set('language','es-ES');
- const cr=await fetch(u,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(14000)});
- if(!cr.ok)return res.status(cr.status===404?404:502).json({error:cr.status===404?'Esta persona no aparece en TMDB.':'No se pudo consultar la filmografía (TMDB '+cr.status+').'});
- const credits=await cr.json();
- const movies=[...(credits.cast||[]),...(credits.crew||[]).filter(x=>x.job==='Director')].filter(x=>!x.adult&&x.id).map(x=>({id:x.id,title:x.title||x.original_title||'',year:(x.release_date||'').slice(0,4),poster:photo(x.poster_path),overview:x.overview||'',genres:(x.genre_ids||[]).map(g=>genres[g]).filter(Boolean),cast:[],ratings:[],people:[],runtime:null}));
- const data={person:{id:Number(person),name:credits.cast?.[0]?.name||credits.crew?.[0]?.name||'Filmografía',biography:''},movies:[...new Map(movies.map(x=>[x.id,x])).values()].sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0))};
- personCache.set(person,{time:Date.now(),data});res.setHeader('Cache-Control','public, max-age=0, s-maxage=3600');return res.status(200).json(data);
+ const headers={Authorization:'Bearer '+token};
+ const getTMDB=async url=>{const response=await fetch(url,{headers,signal:AbortSignal.timeout(12000)});if(!response.ok)return null;return response.json();};
+ let personId=suppliedId;
+ let details=await getTMDB('https://api.themoviedb.org/3/person/'+personId+'?language=es-ES');
+ if(!details&&name){
+  const u=new URL('https://api.themoviedb.org/3/search/person');u.searchParams.set('query',name);u.searchParams.set('language','es-ES');
+  const found=await getTMDB(u);
+  const results=found?.results||[];
+  const simple=t=>t.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  const match=results.find(x=>simple(x.name)===simple(name))||results[0];
+  if(match){personId=String(match.id);details=await getTMDB('https://api.themoviedb.org/3/person/'+personId+'?language=es-ES');}
+ }
+ if(!details)return res.status(404).json({error:'TMDB no encuentra a esta persona. Prueba con otra ficha actualizada.'});
+ const cr=await getTMDB('https://api.themoviedb.org/3/person/'+personId+'/movie_credits?language=es-ES');
+ if(!cr)return res.status(502).json({error:'TMDB no ha devuelto los créditos cinematográficos de '+details.name+'.'});
+ const movies=[...(cr.cast||[]),...(cr.crew||[]).filter(x=>x.job==='Director')].filter(x=>!x.adult&&x.id).map(x=>({id:x.id,title:x.title||x.original_title||'',year:(x.release_date||'').slice(0,4),poster:photo(x.poster_path),overview:x.overview||'',genres:(x.genre_ids||[]).map(g=>genres[g]).filter(Boolean),cast:[],ratings:[],people:[],runtime:null}));
+ const data={person:{id:Number(personId),name:details.name||name||'Filmografía',biography:details.biography||''},movies:[...new Map(movies.map(x=>[x.id,x])).values()].sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0))};
+ personCache.set(cacheId,{time:Date.now(),data});res.setHeader('Cache-Control','public, max-age=0, s-maxage=3600');return res.status(200).json(data);
  }
  const feedType=['popular','now','upcoming','top','streaming'].includes(feed)?feed:'popular';
  const path=collection?`collection/${collection}`:id?`movie/${id}`:similar?`movie/${similar}/recommendations`:q?'search/movie':feedType==='now'?'movie/now_playing':feedType==='upcoming'?'movie/upcoming':feedType==='top'||feedType==='streaming'?'discover/movie':'discover/movie';
