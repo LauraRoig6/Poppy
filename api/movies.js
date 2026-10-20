@@ -11,7 +11,7 @@ export default async function handler(req,res){
  const token=process.env.TMDB_READ_TOKEN?.trim();
  if(!token)return res.status(503).json({error:'Falta TMDB_READ_TOKEN en Vercel. Añádelo y pulsa Redeploy. En Ajustes tienes los pasos.',demo:true});
  try{
- const {q,id,page='1',similar,genre,max,feed,collection,withperson}=req.query||{};
+ const {q,id,page='1',similar,genre,max,feed,collection,withperson,service}=req.query||{};
  // Disponibilidad por suscripción (España), datos JustWatch servidos por TMDB.
  // Consultas limitadas y cacheadas para evitar ralentizar la interfaz.
  if(req.query?.watch){
@@ -74,11 +74,11 @@ export default async function handler(req,res){
  personCache.set(cacheId,{time:Date.now(),data});res.setHeader('Cache-Control','public, max-age=0, s-maxage=3600');return res.status(200).json(data);
  }
 
- const feedType=['popular','now','upcoming','top','streaming','streaming-new','radar','digital'].includes(feed)?feed:'popular';
+ const feedType=['popular','now','upcoming','top','streaming','streaming-new','radar','digital','session'].includes(feed)?feed:'popular';
  const path=collection?`collection/${collection}`:id?`movie/${id}`:similar?`movie/${similar}/recommendations`:q?'search/movie':'discover/movie';
  const url=new URL('https://api.themoviedb.org/3/'+path);url.searchParams.set('language','es-ES');url.searchParams.set('region','ES');url.searchParams.set('include_adult','false');
  if(id){url.searchParams.set('append_to_response','credits,images');url.searchParams.set('include_image_language','es,en,null');}
- else {url.searchParams.set('page',String(Math.min(50,Math.max(1,Number(page)||1))));if(q)url.searchParams.set('query',q);if(!q&&!similar&&['popular','top','streaming','streaming-new','radar','now','upcoming','digital'].includes(feedType)){url.searchParams.set('sort_by','popularity.desc');url.searchParams.set('vote_count.gte','50');url.searchParams.set('primary_release_date.lte',new Date().toISOString().slice(0,10));if(feedType==='top'){url.searchParams.set('sort_by','vote_average.desc');url.searchParams.set('vote_count.gte','250');url.searchParams.set('primary_release_date.gte','1990-01-01');}if(feedType==='radar'){if(withperson)url.searchParams.set('with_people',String(withperson));const t=new Date(),end=new Date(t);end.setMonth(end.getMonth()+6);url.searchParams.set('sort_by','popularity.desc');url.searchParams.set('primary_release_date.gte',t.toISOString().slice(0,10));url.searchParams.set('primary_release_date.lte',end.toISOString().slice(0,10));url.searchParams.delete('vote_count.gte');url.searchParams.delete('primary_release_date.lte');url.searchParams.set('primary_release_date.lte',end.toISOString().slice(0,10));}
+ else {url.searchParams.set('page',String(Math.min(50,Math.max(1,Number(page)||1))));if(q)url.searchParams.set('query',q);if(!q&&!similar&&['popular','top','streaming','streaming-new','radar','now','upcoming','digital','session'].includes(feedType)){url.searchParams.set('sort_by','popularity.desc');url.searchParams.set('vote_count.gte','50');url.searchParams.set('primary_release_date.lte',new Date().toISOString().slice(0,10));if(feedType==='top'){url.searchParams.set('sort_by','vote_average.desc');url.searchParams.set('vote_count.gte','250');url.searchParams.set('primary_release_date.gte','1990-01-01');}if(feedType==='radar'){if(withperson)url.searchParams.set('with_people',String(withperson));const t=new Date(),end=new Date(t);end.setMonth(end.getMonth()+6);url.searchParams.set('sort_by','popularity.desc');url.searchParams.set('primary_release_date.gte',t.toISOString().slice(0,10));url.searchParams.set('primary_release_date.lte',end.toISOString().slice(0,10));url.searchParams.delete('vote_count.gte');url.searchParams.delete('primary_release_date.lte');url.searchParams.set('primary_release_date.lte',end.toISOString().slice(0,10));}
  if(['now','upcoming','digital'].includes(feedType)){
   const start=new Date(),end=new Date(start);end.setDate(end.getDate()+(feedType==='now'?2:120));
   const today=start.toISOString().slice(0,10);
@@ -87,6 +87,14 @@ export default async function handler(req,res){
   url.searchParams.set('release_date.gte',feedType==='now'?new Date(start.getTime()-14*86400000).toISOString().slice(0,10):today);
   url.searchParams.set('release_date.lte',end.toISOString().slice(0,10));
   url.searchParams.set('sort_by','popularity.desc');
+ }
+ if(feedType==='session'&&service&&service!=='any'){
+  const providers={'Netflix':'8','Prime Video':'9|119','Disney+':'337','Crunchyroll':'283|122'};
+  if(providers[service]){
+   url.searchParams.set('watch_region','ES');
+   url.searchParams.set('with_watch_monetization_types','flatrate');
+   url.searchParams.set('with_watch_providers',providers[service]);
+  }
  }
  if(['streaming','streaming-new'].includes(feedType)){url.searchParams.set('watch_region','ES');url.searchParams.set('with_watch_monetization_types','flatrate');url.searchParams.set('with_watch_providers','8|9|119|337|122|283');url.searchParams.set('sort_by','popularity.desc');if(feedType==='streaming-new'){const cutoff=new Date();cutoff.setMonth(cutoff.getMonth()-8);url.searchParams.set('primary_release_date.gte',cutoff.toISOString().slice(0,10));}}if(Object.keys(genres).includes(String(genre)))url.searchParams.set('with_genres',genre);if(Number(max)>0&&Number(max)<999){url.searchParams.set('with_runtime.lte',String(Number(max)));url.searchParams.set('with_runtime.gte','1');}}}
  const response=await fetch(url,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(10000)});

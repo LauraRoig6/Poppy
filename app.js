@@ -58,22 +58,39 @@ function restoreSessionControls(){const values={sessionScope:sessionFilters.scop
 async function showSession(){
  const request=++sessionRun;
  sessionFilters={scope:$('#sessionScope')?.value||'pending',genre:$('#sessionGenre')?.value||'',max:Number($('#sessionDuration')?.value||999),platform:$('#sessionService')?.value||'any'};
- const {scope,genre:genreChoice,max:time,platform}=sessionFilters;const target=$('#sessionResult');if(!target)return;
- target.innerHTML='<p class="muted">Buscando tu sesión ideal…</p>';
- let pool=scope==='pending'?activeRecords().filter(r=>r.status==='pending'&&r.movie).map(r=>r.movie):allMovies().filter(m=>!['seen','dismissed','pending'].includes(rec(m.id)?.status));
- if(scope==='all'&&mode==='live'){
-  const gid=Object.entries(config.genres||{}).find(([,g])=>g===genreChoice)?.[0]||'';
-  try{const page=1+Math.floor(Math.random()*5);const d=await api('?feed=popular&page='+page+'&genre='+gid+'&max='+time);d.movies.forEach(putMovie);pool=[...new Map([...pool,...d.movies].map(m=>[m.id,m])).values()].filter(m=>!['seen','dismissed','pending'].includes(rec(m.id)?.status));}catch(e){console.warn('Sesión general:',e.message);}
+ const {scope,genre:genreChoice,max:time,platform}=sessionFilters;
+ const target=$('#sessionResult');if(!target)return;
+ target.innerHTML='<p class="muted">Buscando películas que cumplan tus filtros…</p>';
+ let pool=[],error='';
+ if(scope==='all'){
+  // Query TMDB for movies matching all restrictions, including the streaming service.
+  // Do NOT search a random catalogue page and check providers afterwards.
+  if(mode==='live'){
+   const gid=Object.entries(config.genres||{}).find(([,g])=>g===genreChoice)?.[0]||'';
+   const params='?feed=session&service='+encodeURIComponent(platform)+'&genre='+gid+'&max='+time;
+   try{
+    const pages=await Promise.all([1,2,3].map(page=>api(params+'&page='+page).catch(e=>({movies:[],error:e.message}))));
+    if(pages.every(d=>d.error))throw Error(pages[0].error);
+    pages.flatMap(d=>d.movies||[]).forEach(putMovie);
+    pool=[...new Map(pages.flatMap(d=>d.movies||[]).map(m=>[m.id,m])).values()]
+     .filter(m=>!['seen','dismissed','pending'].includes(rec(m.id)?.status));
+   }catch(e){error='No se pudo consultar el catálogo: '+e.message;}
+  }else error='El catálogo de TMDB no está conectado. Inténtalo cuando vuelva la conexión.';
+ }else{
+  pool=activeRecords().filter(r=>r.status==='pending'&&r.movie).map(r=>r.movie);
+  if(platform!=='any')await loadWatchAvailability(pool.map(m=>m.id));
  }
- if(platform!=='any')await loadWatchAvailability(pool.slice(0,35).map(m=>m.id));
- if(request!==sessionRun)return;
- const availability=Object.fromEntries(watchAvailability);
- const eligible=pool.filter(m=>(!genreChoice||m.genres?.includes(genreChoice))&&(time===999||!m.runtime||m.runtime<=time)&&(platform==='any'||availability[m.id]?.services?.includes(platform)));
- const hot=eligible.filter(m=>scope==='pending'&&rec(m.id)?.priority);
+ if(request!==sessionRun||tab!=='home')return;
+ const eligible=pool.filter(m=>(!genreChoice||m.genres?.includes(genreChoice))
+  &&(time===999||(scope==='all'?(!m.runtime||m.runtime<=time):(m.runtime&&m.runtime<=time)))
+  &&(scope==='all'||platform==='any'||watchAvailability.get(m.id)?.services?.includes(platform)));
+ // Pending priorities are respected, but new discoveries are selected across the whole filtered catalogue.
+ const hot=scope==='pending'?eligible.filter(m=>rec(m.id)?.priority):[];
  const choices=hot.length?hot:eligible;
- const film=choices[Math.floor(Math.random()*choices.length)]||null;
- sessionPickId=film?.id||null;sessionResult={movie:film||null,scope,platform,empty:`No hay películas ${scope==='pending'?'pendientes':'del catálogo'} que cumplan estos filtros. Prueba otra duración, género o plataforma.`};
- if(tab==='home'&&$('#sessionResult'))restoreSessionControls();
+ const film=choices.length?choices[Math.floor(Math.random()*choices.length)]:null;
+ sessionPickId=film?.id||null;
+ sessionResult={movie:film||null,scope,platform,empty:error||`No se ha encontrado una película verificada con esos filtros en ${scope==='pending'?'tus pendientes':'la búsqueda actual de TMDB'}. Puedes cambiar la plataforma o la duración.`};
+ if($('#sessionResult'))restoreSessionControls();
 }
 async function loadRadar(){if(radarLoading||mode!=='live')return;radarLoading=true;const target=$('#radarResults');if(target)target.innerHTML='<p class="muted">Buscando próximos estrenos…</p>';
  try{const genreWeights=Object.entries(taste(records)).sort((a,b)=>b[1]-a[1]);const top=genreWeights.find(([,v])=>v>0)?.[0]||'';const gid=Object.entries(config.genres||{}).find(([,g])=>g===top)?.[0]||'';
@@ -105,22 +122,47 @@ function home(){const fixed=chosen();if(!pick||!(onlyPending?available():discove
 let discoverPage=1;
 async function loadRecommendations(more=false){if(mode!=='live'||onlyPending)return;const version=++loadVersion;discoverPage=more?Math.min(discoverPage+1,50):1;const gid=Object.entries(config.genres||{}).find(([,g])=>g===genre)?.[0]||'';try{const d=await api(`?page=${discoverPage}&genre=${gid}&max=${max}`);if(version!==loadVersion)return;const details=max<999?await Promise.all(d.movies.slice(0,12).map(m=>api('?id='+m.id+'&fast=1').catch(()=>m))):d.movies;details.forEach(putMovie);choose();if(tab==='home')home();}catch(e){toast(e.message);}}
 function visibleDiscovery(movies){return movies.filter(m=>!['pending','seen'].includes(rec(m.id)?.status));}
+const cinemaPosters=new Map();let cinemaPosterLoading=false;
+function cinemaCard(f){
+ const m=cinemaPosters.get(f.title.trim().toLocaleLowerCase('es'));
+ if(m)return `<div class="cinema-film">${card(m)}${f.date?`<small class="cinema-release-date">Estreno: ${esc(f.date)}</small>`:''}</div>`;
+ return `<div class="cinema-film"><button class="card" data-cinema-search="${esc(f.title)}" type="button"><div class="poster"><span><img class="fallback-logo" src="logo.svg" alt="">${esc(f.title)}<small>Ver ficha ↗</small></span></div><h3>${esc(f.title)}</h3></button>${f.date?`<small class="cinema-release-date">Estreno: ${esc(f.date)}</small>`:''}</div>`;
+}
 function renderCinemaListings(){
  const target=$('#cinemaResults');if(!target)return;
  if(cinemaLoading&&!cinemaListing){target.innerHTML='<p class="loading">Consultando los cines de Castellón y Vila-real…</p>';return;}
- if(!cinemaListing){target.innerHTML=`<p class="notice">${esc(cinemaError||'No se ha podido obtener la cartelera local.')}. Puedes abrir las webs de los cines para comprobarla.</p>`;return;}
- const upcoming=discoverFeed==='upcoming';const cinemas=cinemaListing.cinemas||[];
- target.innerHTML=`<p class="muted">Fuentes locales · ${esc(new Date(cinemaListing.updatedAt).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}))}. Datos orientativos: confirma siempre las sesiones en la sala.</p>`+cinemas.map(c=>{
+ if(!cinemaListing){target.innerHTML=`<p class="notice">${esc(cinemaError||'No se ha podido obtener la cartelera local.')}. Consulta la web de cada sala.</p>`;return;}
+ const upcoming=discoverFeed==='upcoming',cinemas=cinemaListing.cinemas||[];
+ target.innerHTML=`<p class="muted">Fuentes locales · Comprobación: ${esc(new Date(cinemaListing.updatedAt).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}))}. ${cinemaPosterLoading?'Cargando carteles… ':''}Confirma siempre la sesión en la web del cine.</p>`+cinemas.map(c=>{
   const items=(upcoming?c.upcoming:c.now)||[];
-  return `<section class="cinema-source"><div class="cinema-source-title"><h3>${esc(c.name)}</h3><a href="${esc(c.official)}" target="_blank" rel="noopener noreferrer">Ver cartelera ↗</a></div>${items.length?`<div class="cinema-titles">${items.map(f=>`<div class="cinema-title"><div><b>${esc(f.title)}</b>${f.date?`<small>Estreno anunciado: ${esc(f.date)}</small>`:''}</div><button class="textbtn" data-cinema-search="${esc(f.title)}">Buscar ficha ↗</button></div>`).join('')}</div>`:`<p class="muted">${upcoming?'Todavía no hay próximos títulos publicados en un formato verificable para esta sala.':'No se ha podido leer su programación actual.'} Consulta la web del cine.</p>`}</section>`;
+  return `<section class="cinema-source"><div class="cinema-source-title"><h3>${esc(c.name)}</h3><a href="${esc(c.official)}" target="_blank" rel="noopener noreferrer">Ver programación ↗</a></div>${items.length?`<div class="grid cinema-movie-grid">${items.map(cinemaCard).join('')}</div>`:`<p class="muted">${upcoming?'La sala no publica próximos títulos que hayamos podido verificar automáticamente.':'No se ha podido leer su cartelera actual.'} Revisa la programación oficial.</p>`}</section>`;
  }).join('');
 }
+async function loadCinemaPosters(){
+ if(cinemaPosterLoading||!cinemaListing||mode!=='live')return;
+ const titles=[...new Set((cinemaListing.cinemas||[]).flatMap(c=>[...(c.now||[]),...(c.upcoming||[])].map(f=>f.title)))].filter(t=>!cinemaPosters.has(t.trim().toLocaleLowerCase('es'))).slice(0,65);
+ if(!titles.length)return;
+ cinemaPosterLoading=true;
+ try{
+  // Each request looks up several films together; the cinema itself remains the source for showtimes.
+  for(let offset=0;offset<titles.length;offset+=30){
+   const groups=[];for(let i=offset;i<Math.min(offset+30,titles.length);i+=10)groups.push(titles.slice(i,i+10));
+   await Promise.all(groups.map(async group=>{
+    try{const r=await fetch('./api/cinema-posters?titles='+encodeURIComponent(JSON.stringify(group)),{signal:AbortSignal.timeout(12000)});
+     if(!r.ok)return;const data=await r.json();for(const [title,m] of Object.entries(data.movies||{})){
+      const key=title.trim().toLocaleLowerCase('es');cinemaPosters.set(key,m||null);if(m)putMovie(m);
+     }
+    }catch(e){console.warn('Carteles locales:',e.message);}
+   }));
+  }
+ }finally{cinemaPosterLoading=false;if(tab==='search'&&['now','upcoming'].includes(discoverFeed))renderCinemaListings();}
+}
 async function loadCinemaListings(force=false){
- if(cinemaLoading||cinemaListing&&!force)return;
+ if(cinemaLoading||(cinemaListing&&!force))return;
  cinemaLoading=true;renderCinemaListings();
  try{const r=await fetch('./api/cinemas',{signal:AbortSignal.timeout(19000),cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();if(!Array.isArray(d.cinemas))throw Error('Respuesta no válida');cinemaListing=d;cinemaError='';}
  catch(e){cinemaError='No se pudo actualizar la cartelera local';console.warn('Carteleras locales:',e);}
- finally{cinemaLoading=false;if(tab==='search'&&['now','upcoming'].includes(discoverFeed))renderCinemaListings();}
+ finally{cinemaLoading=false;if(tab==='search'&&['now','upcoming'].includes(discoverFeed))renderCinemaListings();if(cinemaListing)loadCinemaPosters();}
 }
 function renderDigitalUpcoming(){const target=$('#digitalUpcoming');if(!target)return;target.innerHTML=digitalLoading?'<p class="loading">Consultando lanzamientos digitales en España…</p>':upcomingDigital.length?grid(visibleDiscovery(upcomingDigital)):'<p class="muted">No hay lanzamientos digitales confirmados en TMDB con estos criterios. Consulta los próximos estrenos en las plataformas oficiales.</p>';}
 async function loadDigitalUpcoming(){if(digitalLoading||mode!=='live'||digitalAttempted)return;digitalAttempted=true;digitalLoading=true;renderDigitalUpcoming();try{const d=await api('?feed=digital&page=1');upcomingDigital=d.movies||[];upcomingDigital.forEach(putMovie);}catch(e){console.warn('Estrenos digitales:',e.message);}finally{digitalLoading=false;if(tab==='search'&&discoverFeed==='upcoming')renderDigitalUpcoming();}}

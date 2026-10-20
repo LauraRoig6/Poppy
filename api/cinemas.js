@@ -14,21 +14,38 @@ export function parseCinemaHTML(html,type,now=new Date()){
  const today=new Date(now.toISOString().slice(0,10)+'T00:00:00Z');
  if(type==='estepark'){
   const block=html.match(/CARTELERA[\s\S]{0,30000}/i)?.[0]||html;
-  const titles=[...block.matchAll(/<h[234][^>]*>([\s\S]*?)<\/h[234]>/gi)].map(m=>strip(m[1]));
+  const linked=[...block.matchAll(/<h[234][^>]*>([\s\S]*?)<\/h[234]>\s*<h[234][^>]*>[\s\S]*?comprar entradas[\s\S]*?<\/h[234]>/gi)].map(m=>strip(m[1]));
+  const headings=[...block.matchAll(/<h[234][^>]*>([\s\S]*?)<\/h[234]>/gi)].map(m=>strip(m[1]));
+  const titles=headings.filter(t=>!/(^|\b)(cartelera|men[uú]|contacto|profesionales|avisos?|legal|estrenos actualizados)(\b|$)/i.test(t)&&!/^\*|^comprar entradas$/i.test(t));
   // Se publica cartelera actual; los estrenos futuros de estas salas no están confirmados.
-  return {now:uniq(titles.filter(t=>!/^comprar entradas$/i.test(t)).map(title=>({title}))),upcoming:[]};
+  return {now:uniq(titles.map(title=>({title}))),upcoming:[]};
  }
  if(type==='sucre'){
-  const lines=html.replace(/<\/(?:nav|a|option|li|h[1-6]|p|div|section)>/gi,'\n$&').split('\n').map(strip).filter(Boolean);
-  const rows=lines.map(line=>line.match(/(?:^|\| )([A-ZÁÉÍÓÚÀÈÏÒÜÑÇ0-9][A-ZÁÉÍÓÚÀÈÏÒÜÑÇ0-9 '.:()\-–!¿?]{2,88}?)\s+Estreno:\s*(\d{1,2}\/\d{1,2}\/\d{4})/)).filter(Boolean)
-   .map(m=>({title:m[1].trim(),date:iso(m[2])}));
-  const current=rows.filter(x=>x.date&&new Date(x.date+'T00:00:00Z')<=today);
-  const future=rows.filter(x=>x.date&&new Date(x.date+'T00:00:00Z')>today);
-  return {now:uniq(current),upcoming:uniq(future)};
+  // The cinema homepage publishes a film selector followed by a distinct 'Próximamente' section.
+  // Current and future films are NOT inferred from their release date alone.
+  const headerAt=html.search(/Pr[oó]ximamente/i);
+  const present=headerAt>=0?html.slice(0,headerAt):html;
+  const future=headerAt>=0?html.slice(headerAt):'';
+  function extract(block){
+   const text=block.replace(/<\/(?:nav|a|option|li|h[1-6]|p|div|section)>/gi,'\n$&').split('\n').map(strip).filter(Boolean);
+   return text.map(line=>line.match(/(?:^|\| )([A-ZÁÉÍÓÚÀÈÏÒÜÑÇ0-9][A-ZÁÉÍÓÚÀÈÏÒÜÑÇ0-9 '.:()\-–!¿?]{2,88}?)\s+Estreno:\s*(\d{1,2}\/\d{1,2}\/\d{4})/)).filter(Boolean).map(m=>({title:m[1].trim(),date:iso(m[2])}));
+  }
+  const allCurrent=extract(present),allFuture=extract(future);
+  if(headerAt<0){const current=allCurrent.filter(x=>!x.date||new Date(x.date+'T00:00:00Z')<=today);const upcoming=allCurrent.filter(x=>x.date&&new Date(x.date+'T00:00:00Z')>today);return {now:uniq(current),upcoming:uniq(upcoming)};}
+  // Upcoming cinema schedules may include titles showing this week that haven't premiered yet.
+  const nearest=allCurrent.filter(x=>x.date&&new Date(x.date+'T00:00:00Z')>today);
+  return {now:uniq(allCurrent.filter(x=>!x.date||new Date(x.date+'T00:00:00Z')<=today)),upcoming:uniq([...allFuture,...nearest])};
  }
  if(type==='sensacine'){
-  const titles=[...html.matchAll(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi)].map(m=>strip(m[1]));
-  return {now:uniq(titles.map(title=>({title}))),upcoming:[]};
+  const headings=[...html.matchAll(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi)];
+  const rows=headings.map((match,i)=>{
+    const title=strip(match[1]);const next=html.slice(match.index+match[0].length,(headings[i+1]?.index||html.length));
+    const released=next.match(/(\d{1,2}) de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre) de (20\d{2})/i);
+    const names=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const date=released?`${released[3]}-${String(names.indexOf(released[2].toLowerCase())+1).padStart(2,'0')}-${released[1].padStart(2,'0')}`:'';
+    return {title,date};
+  });
+  return {now:uniq(rows),upcoming:uniq(rows.filter(x=>x.date&&new Date(x.date+'T00:00:00Z')>today))};
  }
  return {now:[],upcoming:[]};
 }
