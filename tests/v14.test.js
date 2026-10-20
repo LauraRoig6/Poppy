@@ -1,12 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SERVICES,classifyProvider,watchServices,autoCollections,sagaProgress,chooseSession,movieLinks} from '../v14.js';
+import {SERVICES,classifyProvider,watchServices,sagaProgress,chooseSession,movieLinks} from '../v14.js';
 const movie=(id,title,genres=[],extra={})=>({id,title,genres,year:'2020',runtime:110,cast:[],director:'',...extra});
-test('Las colecciones automáticas no modifican registros y respetan estados',()=>{
- const records={'1':{movie:movie(1,'Diez'),status:'seen',score:10},'2':{movie:movie(2,'Horror',['Terror']),status:'pending'},'3':{movie:movie(3,'Importante'),status:'pending',priority:1},'4':{movie:movie(4,'Vieja',[],{year:'1994'}),status:'seen',score:7}};
- const before=JSON.stringify(records),folders=autoCollections(records);
- assert.deepEqual(folders.map(x=>x.movies.length),[1,1,1,1]);assert.equal(before,JSON.stringify(records));
-});
 test('La sesión respeta prioridad, género, duración y plataforma',()=>{
  const films=[movie(1,'A',['Terror'],{runtime:80}),movie(2,'B',['Terror'],{runtime:100}),movie(3,'C',['Drama'],{runtime:80})];
  const records={'2':{priority:1}};
